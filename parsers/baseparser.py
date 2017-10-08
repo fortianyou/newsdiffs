@@ -134,6 +134,10 @@ class BaseParser(object):
         raise NotImplementedError()
 
     def __unicode__(self):
+        if self.date == None: self.date = ''
+        if self.title == None: self.title = ''
+        if self.byline == None: self.byline = ''
+        if self.body == None: self.body = ''
         return canonicalize(u'\n'.join((self.date, self.title, self.byline,
                                         self.body,)))
 

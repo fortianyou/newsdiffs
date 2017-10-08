@@ -222,6 +222,7 @@ def add_to_git_repo(data, filename, article):
     #Don't use full path because it can exceed the maximum filename length
     #full_path = os.path.join(models.GIT_DIR, filename)
     os.chdir(article.full_git_dir)
+    print filename
     mkdir_p(os.path.dirname(filename))
 
     boring = False

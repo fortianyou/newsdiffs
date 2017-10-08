@@ -8,11 +8,7 @@
 # List of parsers to import and use based on parser.domains
 
 parsers = """
-nyt.NYTParser
-cnn.CNNParser
-politico.PoliticoParser
-bbc.BBCParser
-washpo.WashPoParser
+tvm.TVMParser
 """.split()
 
 parser_dict = {}

@@ -9,6 +9,8 @@
 
 parsers = """
 tvm.TVMParser
+ordinal.OrdinalParser
+tf.TFParser
 """.split()
 
 parser_dict = {}

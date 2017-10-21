@@ -113,9 +113,6 @@ def mkdir_p(path):
         else:
             raise
 
-def canonicalize_url(url):
-    return url.split('?')[0].split('#')[0].strip()
-
 class IndexLockError(OSError):
     pass
 
@@ -170,7 +167,6 @@ def get_all_article_urls():
     for parser in parsers.parsers:
         logger.info('Looking up %s' % parser.domains)
         urls = parser.feed_urls()
-        ans = ans.union(map(canonicalize_url, urls))
     return ans
 
 CHARSET_LIST = """EUC-JP GB2312 EUC-KR Big5 SHIFT_JIS windows-1252
@@ -222,7 +218,7 @@ def add_to_git_repo(data, filename, article):
     #Don't use full path because it can exceed the maximum filename length
     #full_path = os.path.join(models.GIT_DIR, filename)
     os.chdir(article.full_git_dir)
-    print filename
+    print "add to git repo %s" % filename
     mkdir_p(os.path.dirname(filename))
 
     boring = False
@@ -304,15 +300,23 @@ def load_article(url):
         logger.info('Unable to parse domain, skipping')
         return
     try:
-        parsed_article = parser(url)
-    except (AttributeError, urllib2.HTTPError, httplib.HTTPException), e:
+        try:
+            parsed_article = parser(url)
+        except:
+            if (url[-1] != '/'): 
+                print "%s parsed failed, try to parse %s" % (url, (url + '/'))
+                parsed_article = parser(url + '/')
+            else: raise
+    except (Exception, AttributeError, urllib2.HTTPError, httplib.HTTPException), e:
         if isinstance(e, urllib2.HTTPError) and e.msg == 'Gone':
             return
         logger.error('Exception when parsing %s', url)
         logger.error(traceback.format_exc())
         logger.error('Continuing')
         return
+
     if not parsed_article.real_article:
+        print "[WARNING] not real article!"
         return
     return parsed_article
 
@@ -321,6 +325,7 @@ def load_article(url):
 def update_article(article):
     parsed_article = load_article(article.url)
     if parsed_article is None:
+        print "[WARNING] article is None!"
         return
     to_store = unicode(parsed_article).encode('utf8')
     t = datetime.now()
@@ -342,6 +347,8 @@ def update_article(article):
         if not boring:
             article.last_update = t
             article.save()
+    else:
+        print "[WARING] add to git repo is rejected!"
 
 def update_articles(todays_git_dir):
     logger.info('Starting scraper; looking for new URLs')

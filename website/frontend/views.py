@@ -12,6 +12,7 @@ import django.db
 import time
 from django.template import Context, RequestContext, loader
 from django.views.decorators.cache import cache_page
+from django.http import HttpResponse
 
 OUT_FORMAT = '%B %d, %Y at %l:%M%P EDT'
 
@@ -54,7 +55,7 @@ def get_last_update(source):
 
 def get_articles(source=None, distance=0):
     articles = []
-    rx = re.compile(r'^https?://(?:[^/]*\.)%s/' % source if source else '')
+    rx = re.compile(r'^https?://([^?#&:/]*\.)?%s/' % source if source else '')
 
     pagelength = datetime.timedelta(days=1)
     end_date = datetime.datetime.now() - distance * pagelength
@@ -71,7 +72,7 @@ def get_articles(source=None, distance=0):
      (SELECT Articles.id as article_id, MAX(T3.date) AS age, COUNT(T3.id) AS num_vs
       FROM Articles LEFT OUTER JOIN version T3 ON (Articles.id = T3.article_id)
       WHERE (T3.boring=0) GROUP BY Articles.id
-      HAVING (age > %s  AND age < %s  AND num_vs > 1 )) T, Articles
+      HAVING (age > %s  AND age < %s  AND num_vs > 0 )) T, Articles
     WHERE (version.article_id = Articles.id) and
           (version.article_id = T.article_id) and
           NOT version.boring
@@ -95,7 +96,7 @@ def get_articles(source=None, distance=0):
         if 'blogs.nytimes.com' in url: #XXX temporary
             continue
 
-        if len(versions) < 2:
+        if len(versions) < 1:
             continue
         rowinfo = get_rowinfo(article, versions)
         articles.append((article, versions[-1], rowinfo))
@@ -104,14 +105,17 @@ def get_articles(source=None, distance=0):
     return articles
 
 
-SOURCES = '''tvmlang.org'''.split()
+SOURCES = '''tvmlang.org
+www.bigdatalab.ac.cn
+www.tensorflow.org
+'''.split()
 
 
 def is_valid_domain(domain):
     """Cheap method to tell whether a domain is being tracked."""
     return any(domain.endswith(source) for source in SOURCES)
 
-@cache_page(60 * 30)  #30 minute cache
+#@cache_page(60 * 30)  #30 minute cache
 def browse(request, source=''):
     if source not in SOURCES + ['']:
         raise Http404
@@ -129,18 +133,18 @@ def browse(request, source=''):
     first_update = get_first_update(source)
     num_pages = (datetime.datetime.now() - first_update).days + 1
     page_list=range(1, 1+num_pages)
-    page_list = []
+    #page_list = []
 
-    articles = get_articles(source=source, distance=page-1)
+    articles = get_articles(source=source, distance=num_pages-1)
     return render_to_response('browse.html', {
             'source': source, 'articles': articles,
-            'page':page,
+            'page':num_pages,
             'page_list': page_list,
             'first_update': first_update,
             'sources': SOURCES
             })
 
-@cache_page(60 * 30)  #30 minute cache
+#@cache_page(60 * 30)  #30 minute cache
 def feed(request, source=''):
     if source not in SOURCES + ['']:
         raise Http404
@@ -188,13 +192,13 @@ def old_diffview(request):
 
     return redirect(reverse('diffview', kwargs=dict(vid1=v1.id,
                                                     vid2=v2.id,
-                                                    urlarg=article.filename())),
+                                                    urlarg=article.dir())),
                     permanent=True)
 
 
 def diffview(request, vid1, vid2, urlarg):
     # urlarg is unused, and only for readability
-    # Could be strict and enforce urlarg == article.filename()
+    # Could be strict and enforce urlarg == article.dir()
     try:
         v1 = Version.objects.get(id=int(vid1))
         v2 = Version.objects.get(id=int(vid2))
@@ -235,7 +239,7 @@ def diffview(request, vid1, vid2, urlarg):
         if all(x[i] for x in adjacent_versions):
             diffl = reverse('diffview', kwargs=dict(vid1=adjacent_versions[0][i].id,
                                                     vid2=adjacent_versions[1][i].id,
-                                                    urlarg=article.filename()))
+                                                    urlarg=article.dir()))
             links.append(diffl)
         else:
             links.append('')
@@ -245,7 +249,7 @@ def diffview(request, vid1, vid2, urlarg):
             'date1':dates[0], 'date2':dates[1],
             'text1':texts[0], 'text2':texts[1],
             'prev':links[0], 'next':links[1],
-            'article_shorturl': article.filename(),
+            'article_shorturl': article.dir(),
             'article_url': article.url, 'v1': v1, 'v2': v2,
             'display_search_banner': came_from_search_engine(request),
             })
@@ -255,7 +259,7 @@ def get_rowinfo(article, version_lst=None):
         version_lst = article.versions()
     rowinfo = []
     lastv = None
-    urlarg = article.filename()
+    urlarg = article.dir()
     for version in version_lst:
         date = version.date
         if lastv is None:
@@ -275,10 +279,14 @@ def prepend_http(url):
 
     url may look like
 
+    //stackoverflow.com     
     www.nytimes.com
     https:/www.nytimes.com    <- because double slashes get stripped
     http://www.nytimes.com
     """
+
+    if url.startswith("//"):
+        return concat("http:", url)
     components = url.split('/', 2)
     if len(components) <= 2 or '.' in components[0]:
         components = ['http:', '']+components
@@ -294,6 +302,14 @@ def swap_http_https(url):
             return other+url[len(one):]
     raise ValueError("URL doesn't start with http or https")
 
+def has_read(request, urlarg=''):
+    v = request.REQUEST.get('version') # this is the deprecated interface.
+    selected = request.REQUEST.get('selected')
+    if selected == 'true': val = True 
+    else: val = False 
+    Version.objects.filter(v=v).update(boring=val)
+    return HttpResponse("OK")
+
 def article_history(request, urlarg=''):
     url = request.REQUEST.get('url') # this is the deprecated interface.
     if url is None:
@@ -307,7 +323,7 @@ def article_history(request, urlarg=''):
 
     # This is a hack to deal with unicode passed in the URL.
     # Otherwise gives an error, since our table character set is latin1.
-    url = url.encode('ascii', 'ignore')
+    # url = url.encode('ascii', 'ignore') <-- (DO:GTY) cause it will hide unicode characters like chinese.
 
     # Give an error on urls with the wrong hostname without hitting the
     # database.  These queries are usually spam.
@@ -329,7 +345,7 @@ def article_history(request, urlarg=''):
             return HttpResponse('Bug!')
 
     if len(urlarg) == 0:
-        return HttpResponseRedirect(reverse(article_history, args=[article.filename()]))
+        return HttpResponseRedirect(reverse(article_history, args=[article.dir()]))
 
     rowinfo = get_rowinfo(article)
     return render_to_response('article_history.html', {'article':article,

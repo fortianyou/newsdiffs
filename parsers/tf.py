@@ -5,11 +5,11 @@ from datetime import datetime, timedelta
 
 DATE_FORMAT = '%B %d, %Y at %l:%M%P EDT'
 
-class TVMParser(BaseParser):
-    domains = ['tvmlang.org']
+class TFParser(BaseParser):
+    domains = ['www.tensorflow.org']
 
-    feeder_pat   = '^https?://tvmlang.org'
-    feeder_pages = ['http://tvmlang.org/']
+    feeder_pat   = '^https?://www.tensorflow.org/(?!api_docs)'
+    feeder_pages = ['http://www.tensorflow.org/']
 
     def _parse(self, html):
         soup = BeautifulSoup(html, convertEntities=BeautifulSoup.HTML_ENTITIES,

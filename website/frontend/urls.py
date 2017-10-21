@@ -9,6 +9,7 @@ urlpatterns = [
   url(r'^upvote/$', 'frontend.views.upvote', name='upvote'),
   url(r'^diff/(?P<vid1>\d+)/(?P<vid2>\d+)/(?P<urlarg>.*)$', 'frontend.views.diffview', name='diffview'),
   url(r'^about/$', 'frontend.views.about', name='about'),
+  url(r'^has-read/(?P<urlarg>.*)$', 'frontend.views.has_read', name='has_read'),
   url(r'^browse/$', 'frontend.views.browse', name='browse'),
   url(r'^browse/(.*)$', 'frontend.views.browse', name='browse'),
   url(r'^feed/browse/(.*)$', 'frontend.views.feed', name='feed'),

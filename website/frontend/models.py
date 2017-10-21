@@ -17,7 +17,10 @@ def strip_prefix(string, prefix):
         string = string[len(prefix):]
     return string
 
-PublicationDict = {'www.tvmlang.org': 'TVM'}
+PublicationDict = {'www.tvmlang.org': 'TVM',
+        'www.tensorflow.org':'TF',
+        'www.bigdatalab.ac.cn':'Ordinal'
+        }
 
 ancient = datetime(1901, 1, 1)
 
@@ -37,7 +40,7 @@ class Article(models.Model):
     def full_git_dir(self):
         return GIT_DIR + self.git_dir
 
-    def filename(self):
+    def dir(self):
         ans = self.url.rstrip('/')
         if ans.startswith('http://'):
             return ans[len('http://'):]
@@ -46,6 +49,9 @@ class Article(models.Model):
             # perpetuating the problem
             return 'https:/' + ans[len('https://'):]
         raise ValueError("Unknown file type '%s'" % self.url)
+
+    def filename(self):
+        return self.dir() + "/text"
 
     def publication(self):
         return PublicationDict.get(self.url.split('/')[2])

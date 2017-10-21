@@ -5,11 +5,13 @@ from datetime import datetime, timedelta
 
 DATE_FORMAT = '%B %d, %Y at %l:%M%P EDT'
 
-class TVMParser(BaseParser):
-    domains = ['tvmlang.org']
+class OrdinalParser(BaseParser):
+    domains = ['www.bigdatalab.ac.cn']
 
-    feeder_pat   = '^https?://tvmlang.org'
-    feeder_pages = ['http://tvmlang.org/']
+    feeder_pat   = '^https?://www.bigdatalab.ac.cn/~[(junxu)|(gjf)|(lanyanyan)]'
+    feeder_pages = ['http://www.bigdatalab.ac.cn/~junxu/', 
+    'http://www.bigdatalab.ac.cn/~gjf/',
+    'http://www.bigdatalab.ac.cn/~lanyanyan/']
 
     def _parse(self, html):
         soup = BeautifulSoup(html, convertEntities=BeautifulSoup.HTML_ENTITIES,

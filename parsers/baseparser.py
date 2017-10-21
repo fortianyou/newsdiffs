@@ -5,6 +5,7 @@ import socket
 import sys
 import time
 import urllib2
+import string
 
 # Define a logger
 
@@ -24,19 +25,31 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
+def canonicalize_url(url):
+    return url.split('?')[0].split('#')[0].strip().rstrip('/')
+
+def filter_special_url(url):
+    pattern = ".*\.(png|jpg|jpeg|css|xml|ico|/LICENSE)$"
+    if re.match(pattern, url):
+        return False 
+    else:
+        return True 
 
 # Utility functions
 
-def grab_url(url, max_depth=5, opener=None):
+def grab_url(url, max_depth=1, opener=None):
     if opener is None:
         cj = cookielib.CookieJar()
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
     retry = False
     try:
+        print "grab urls: %s" % url
         text = opener.open(url, timeout=5).read()
         if '<title>NY Times Advertisement</title>' in text:
             retry = True
     except socket.timeout:
+        retry = True
+    except: 
         retry = True
     if retry:
         if max_depth == 0:
@@ -124,7 +137,9 @@ class BaseParser(object):
         self._parse(self.html)
 
     def _printableurl(self):
-        return self.url + self.SUFFIX
+        url = self.url + self.SUFFIX
+        return urllib2.quote(url.encode('utf-8'),safe=string.printable)
+    #    return self.url + self.SUFFIX
 
     def _parse(self, html):
         """Should take html and populate self.(date, title, byline, body)
@@ -143,18 +158,34 @@ class BaseParser(object):
 
     @classmethod
     def feed_urls(cls):
-        all_urls = []
-        for feeder_url in cls.feeder_pages:
-            html = grab_url(feeder_url)
-            soup = cls.feeder_bs(html)
+        all_urls = set()
+        seed_urls = set(cls.feeder_pages)
+        all_urls = all_urls | seed_urls
+        while len(seed_urls) > 0:
+            candidate_seeds = set()
+            for feeder_url in seed_urls:
+                try:
+                    html = grab_url(feeder_url)
+                except:
+                    continue
 
-            # "or ''" to make None into str
-            urls = [a.get('href') or '' for a in soup.findAll('a')]
+                #soup = cls.feeder_bs(html, "lxml")
+  
+                # "or ''" to make None into str
+                #urls = [a.get('href') or '' for a in soup.findAll('a')]
+                urls = re.findall('href="([^"]*)"', html) 
+                urls = [concat("http:", url) if url.startswith("//") else url for url in urls]
+                # If no http://, prepend domain name
+                domain = '/'.join(feeder_url.split('/')[:3])
+                urls = [url if '://' in url else concat(domain, url) for url in urls]
 
-            # If no http://, prepend domain name
-            domain = '/'.join(feeder_url.split('/')[:3])
-            urls = [url if '://' in url else concat(domain, url) for url in urls]
+                legal_urls = map(canonicalize_url, urls)
+                candidate_urls = [url for url in legal_urls if
+                                   re.search(cls.feeder_pat, url) and filter_special_url(url)]
 
-            all_urls = all_urls + [url for url in urls if
-                                   re.search(cls.feeder_pat, url)]
+                new_seeds = set(candidate_urls) - all_urls
+                candidate_seeds = candidate_seeds | new_seeds
+                all_urls = all_urls | set(candidate_urls)
+
+            seed_urls = candidate_seeds    
         return all_urls

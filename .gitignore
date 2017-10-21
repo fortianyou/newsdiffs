@@ -1,5 +1,5 @@
 /articles
-
+*.DS_Store
 *~
 *.py[co]
 

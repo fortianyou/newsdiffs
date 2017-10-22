@@ -1,6 +1,8 @@
 from baseparser import BaseParser
+from baseparser import day_diff2now
 import re
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
+#from BeautifulSoup import BeautifulSoup
 from datetime import datetime, timedelta
 
 DATE_FORMAT = '%B %d, %Y at %l:%M%P EDT'
@@ -13,9 +15,17 @@ class OrdinalParser(BaseParser):
     'http://www.bigdatalab.ac.cn/~gjf/',
     'http://www.bigdatalab.ac.cn/~lanyanyan/']
 
+    @classmethod
+    def filter(cls, url):
+        day_diff = day_diff2now(url)
+        if day_diff == None or day_diff < 365 * 2:
+            return True 
+        else:
+            return False 
+ 
     def _parse(self, html):
-        soup = BeautifulSoup(html, convertEntities=BeautifulSoup.HTML_ENTITIES,
-                             fromEncoding='utf-8')
+        soup = BeautifulSoup(html, 'html.parser',
+                             from_encoding='utf-8')
         self.real_article = True
         if soup.title != None: self.title = soup.title.string
         if soup.date != None: self.date = soup.time.string

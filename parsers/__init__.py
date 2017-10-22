@@ -10,8 +10,26 @@
 parsers = """
 tvm.TVMParser
 ordinal.OrdinalParser
-tf.TFParser
+ggblog.GgBlogParser
+cortana.CortanaParser
 """.split()
+#tf.TFParser
+
+PublicationDict = {'www.tvmlang.org': 'TVM',
+        'www.bigdatalab.ac.cn':'Ordinal',
+        'research.googleblog.com':'GgBlog',
+        'blogs.technet.microsoft.com':'Cortana'
+#        'www.tensorflow.org':'TF',
+        }
+
+SOURCES = '''tvmlang.org
+www.bigdatalab.ac.cn
+research.googleblog.com
+blogs.technet.microsoft.com
+'''.split()
+#www.tensorflow.org
+
+
 
 parser_dict = {}
 
@@ -20,7 +38,7 @@ for parsername in parsers:
     module, classname = parsername.rsplit('.', 1)
     parser = getattr(__import__(module, globals(), fromlist=[classname]), classname)
     for domain in parser.domains:
-        parser_dict[domain] = parser
+        parser_dict[domain.strip('/')] = parser
 
 def get_parser(url):
     return parser_dict[url.split('/')[2]]

@@ -7,4 +7,5 @@
 #! /bin/bash
 
 #########################################################################
-python2.7 website/manage.py scraper # --all
+python2.7 website/manage.py scraper
+# --all

@@ -1,6 +1,8 @@
 from baseparser import BaseParser
+from baseparser import day_diff2now
 import re
-from BeautifulSoup import BeautifulSoup
+#from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
 DATE_FORMAT = '%B %d, %Y at %l:%M%P EDT'
@@ -10,6 +12,10 @@ class TVMParser(BaseParser):
 
     feeder_pat   = '^https?://tvmlang.org'
     feeder_pages = ['http://tvmlang.org/']
+
+    @classmethod
+    def filter(cls, url):
+        return True
 
     def _parse(self, html):
         soup = BeautifulSoup(html, convertEntities=BeautifulSoup.HTML_ENTITIES,

@@ -6,6 +6,9 @@ import sys
 import time
 import urllib2
 import string
+from bs4 import SoupStrainer
+import requests	
+from datetime import datetime, timedelta
 
 # Define a logger
 
@@ -24,6 +27,39 @@ ch.setLevel(logging.WARNING)
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+def day_diff2now(url):
+    last_modify_time = url_last_modified(url)
+    if last_modify_time == None:
+        return None 
+    last_dt = datetime.strptime(last_modify_time, "%a, %d %b %Y %H:%M:%S %Z")
+    cur_dt = datetime.now()
+    date_diff = cur_dt - last_dt
+    return date_diff.days
+
+def url_last_modified(url):
+    header = requests.head(url).headers
+    if 'Last-Modified' in header:
+        return header['Last-Modified']
+    else:
+        return None
+
+def prepend_prefix(urls, domain):
+    urls = [concat("http:", url) if url.startswith("//") else url for url in urls]
+    # If no http://, prepend domain name
+    urls = [url if '://' in url else concat(domain, url) for url in urls]
+    return urls
+
+def get_hrefs_by_soup(html):
+    only_a_tags = SoupStrainer("a")
+    soup = BeautifulSoup(html, "html.parser", parse_only=only_a_tags)
+    urls = [a.get('href') or '' for a in soup.findAll('a')]
+    return urls
+
+def get_hrefs_by_regex(html):
+    urls = re.findall('href="([^"]*)"', html) 
+    return urls
+ 
+
 
 def canonicalize_url(url):
     return url.split('?')[0].split('#')[0].strip().rstrip('/')
@@ -37,7 +73,7 @@ def filter_special_url(url):
 
 # Utility functions
 
-def grab_url(url, max_depth=1, opener=None):
+def grab_url_use_retry(url, max_depth=1, opener=None):
     if opener is None:
         cj = cookielib.CookieJar()
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
@@ -55,15 +91,31 @@ def grab_url(url, max_depth=1, opener=None):
         if max_depth == 0:
             raise Exception('Too many attempts to download %s' % url)
         time.sleep(0.5)
-        return grab_url(url, max_depth-1, opener)
+        return grab_url_use_retry(url, max_depth-1, opener)
     return text
 
+def grab_url(url, dynamic_loading=False):
+    print "grab url %s" % url
+    if dynamic_loading:
+        return grab_dynamic_url(url)
+    else:
+        return grab_static_url(url)
 
+import urlopener
+url_opener = urlopener.UrlOpener()
+def grab_static_url(url):
+    return url_opener.get_html(url)
 
+import phantom
+phantom_opener = phantom.Phantom()
+def grab_dynamic_url(url):
+    text =  phantom_opener.get_html(url)
+    return text
 
 # Begin hot patch for https://bugs.launchpad.net/bugs/788986
 # Ick.
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
+#from BeautifulSoup import BeautifulSoup
 def bs_fixed_getText(self, separator=u""):
     bsmod = sys.modules[BeautifulSoup.__module__]
     if not len(self.contents):
@@ -104,6 +156,7 @@ def concat(domain, url):
 # Base Parser
 # To create a new parser, subclass and define _parse(html).
 class BaseParser(object):
+    dynamic_loading = False
     url = None
     domains = [] # List of domains this should parse
 
@@ -127,7 +180,7 @@ class BaseParser(object):
     def __init__(self, url):
         self.url = url
         try:
-            self.html = grab_url(self._printableurl())
+            self.html = grab_url(self._printableurl(), self.dynamic_loading)
         except urllib2.HTTPError as e:
             if e.code == 404:
                 self.real_article = False
@@ -157,35 +210,38 @@ class BaseParser(object):
                                         self.body,)))
 
     @classmethod
+    def filter(cls, url):
+        raise NotImplementedError()
+
+    @classmethod
     def feed_urls(cls):
         all_urls = set()
-        seed_urls = set(cls.feeder_pages)
-        all_urls = all_urls | seed_urls
+        seed_urls = cls.feeder_pages
+        all_urls = all_urls | set([url for url 
+        in map(canonicalize_url, seed_urls) if cls.filter(url)])
+        
         while len(seed_urls) > 0:
             candidate_seeds = set()
             for feeder_url in seed_urls:
                 try:
-                    html = grab_url(feeder_url)
+                    html = grab_url(feeder_url, cls.dynamic_loading)
                 except:
                     continue
 
+                domain = '/'.join(feeder_url.split('/')[:3])
                 #soup = cls.feeder_bs(html, "lxml")
-  
+
+                urls = prepend_prefix(get_hrefs_by_soup(html), domain)
                 # "or ''" to make None into str
                 #urls = [a.get('href') or '' for a in soup.findAll('a')]
-                urls = re.findall('href="([^"]*)"', html) 
-                urls = [concat("http:", url) if url.startswith("//") else url for url in urls]
-                # If no http://, prepend domain name
-                domain = '/'.join(feeder_url.split('/')[:3])
-                urls = [url if '://' in url else concat(domain, url) for url in urls]
-
                 legal_urls = map(canonicalize_url, urls)
                 candidate_urls = [url for url in legal_urls if
-                                   re.search(cls.feeder_pat, url) and filter_special_url(url)]
+                                   re.search(cls.feeder_pat, url)
+                                    and filter_special_url(url) and cls.filter(url)]
 
                 new_seeds = set(candidate_urls) - all_urls
                 candidate_seeds = candidate_seeds | new_seeds
                 all_urls = all_urls | set(candidate_urls)
 
-            seed_urls = candidate_seeds    
+            seed_urls = candidate_seeds
         return all_urls

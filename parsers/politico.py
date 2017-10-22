@@ -3,7 +3,8 @@ from baseparser import BaseParser, grab_url, logger
 # Different versions of BeautifulSoup have different properties.
 # Some work with one site, some with another.
 # This is BeautifulSoup 3.2.
-from BeautifulSoup import BeautifulSoup
+#from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 # This is BeautifulSoup 4
 import bs4
 import re

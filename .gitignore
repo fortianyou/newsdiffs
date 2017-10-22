@@ -1,5 +1,7 @@
 /articles
 *.DS_Store
+*.log
+*.zip
 *~
 *.py[co]
 

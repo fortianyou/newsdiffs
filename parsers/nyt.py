@@ -1,5 +1,6 @@
 from baseparser import BaseParser
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
+#from BeautifulSoup import BeautifulSoup
 
 class NYTParser(BaseParser):
     SUFFIX = '?pagewanted=all'

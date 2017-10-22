@@ -1,5 +1,6 @@
 from baseparser import BaseParser
-from BeautifulSoup import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
+#from BeautifulSoup import BeautifulSoup, Tag
 
 
 class BBCParser(BaseParser):

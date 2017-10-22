@@ -1,6 +1,6 @@
 Django == 1.5
 simplejson
 beautifulsoup4
-beautifulsoup
+selenium
 South
 html5lib

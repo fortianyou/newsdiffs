@@ -167,6 +167,10 @@ def get_all_article_urls():
     for parser in parsers.parsers:
         logger.info('Looking up %s' % parser.domains)
         urls = parser.feed_urls()
+        urls = [url for url in urls if parser.filter(url)]
+        ans = ans.union(urls)
+
+    print ans
     return ans
 
 CHARSET_LIST = """EUC-JP GB2312 EUC-KR Big5 SHIFT_JIS windows-1252

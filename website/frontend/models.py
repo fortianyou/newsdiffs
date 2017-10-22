@@ -2,7 +2,7 @@ import re
 import subprocess
 import os
 from datetime import datetime, timedelta
-
+from management.commands import parsers
 import json
 from django.db import models, IntegrityError
 
@@ -17,10 +17,11 @@ def strip_prefix(string, prefix):
         string = string[len(prefix):]
     return string
 
-PublicationDict = {'www.tvmlang.org': 'TVM',
-        'www.tensorflow.org':'TF',
-        'www.bigdatalab.ac.cn':'Ordinal'
-        }
+PublicationDict = parsers.PublicationDict
+# {'www.tvmlang.org': 'TVM',
+#        'www.tensorflow.org':'TF',
+#        'www.bigdatalab.ac.cn':'Ordinal'
+#        }
 
 ancient = datetime(1901, 1, 1)
 
@@ -42,6 +43,7 @@ class Article(models.Model):
 
     def dir(self):
         ans = self.url.rstrip('/')
+        print ans
         if ans.startswith('http://'):
             return ans[len('http://'):]
         elif ans.startswith('https://'):

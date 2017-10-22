@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import urllib2
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from StringIO import StringIO
 from datetime import datetime, timedelta
 import dateutil.parser

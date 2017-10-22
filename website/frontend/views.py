@@ -13,6 +13,7 @@ import time
 from django.template import Context, RequestContext, loader
 from django.views.decorators.cache import cache_page
 from django.http import HttpResponse
+from management.commands import parsers
 
 OUT_FORMAT = '%B %d, %Y at %l:%M%P EDT'
 
@@ -23,6 +24,13 @@ https://www.google
 search.yahoo.com
 http://www.bing.com
 """.split()
+
+SOURCES = parsers.SOURCES
+#'''tvmlang.org
+#www.bigdatalab.ac.cn
+#www.tensorflow.org
+#'''.split()
+
 
 def came_from_search_engine(request):
     return any(x in request.META.get('HTTP_REFERER', '')
@@ -104,11 +112,6 @@ def get_articles(source=None, distance=0):
     articles.sort(key = lambda x: x[-1][0][1].date, reverse=True)
     return articles
 
-
-SOURCES = '''tvmlang.org
-www.bigdatalab.ac.cn
-www.tensorflow.org
-'''.split()
 
 
 def is_valid_domain(domain):
@@ -339,6 +342,7 @@ def article_history(request, urlarg=''):
             article = Article.objects.get(url=swap_http_https(url))
     except Article.DoesNotExist:
         try:
+            print "[WARING] article %s missing!" % url
             return render_to_response('article_history_missing.html', {'url': url})
         except (TypeError, ValueError):
             # bug in django + mod_rewrite can cause this. =/

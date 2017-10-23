@@ -6,7 +6,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 class Phantom():
   _driver = None
   def __init__(self):
-    self._driver = webdriver.PhantomJS(THIS_DIR + '/phantomjs-2.1.1-macosx/bin/phantomjs')
+    self._driver = webdriver.PhantomJS(THIS_DIR + 'phantomjs-2.1.1-macosx')
 
   def __del__(self):
     self._driver.quit()
